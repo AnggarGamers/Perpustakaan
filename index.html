@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Perpustakaan Pro</title>
+
+<style>
+body{margin:0;font-family:'Segoe UI';background:#020617;color:white}
+.sidebar{width:220px;height:100vh;background:#020617;border-right:1px solid #0ea5e9;position:fixed;padding:20px}
+.main{margin-left:240px;padding:20px}
+.card{border:1px solid #0ea5e9;border-radius:12px;padding:15px;margin-bottom:20px;box-shadow:0 0 15px rgba(14,165,233,0.3)}
+input,select{padding:8px;margin:5px;border-radius:6px;border:none}
+button{padding:6px 10px;background:#0ea5e9;border:none;border-radius:6px;margin:5px;cursor:pointer}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.col{border:1px solid #0ea5e9;padding:10px;border-radius:10px}
+.item{display:flex;justify-content:space-between;border-bottom:1px solid #0ea5e9;padding:5px}
+.denda{color:red}
+a{color:#38bdf8}
+
+table{width:100%;border-collapse:collapse;margin-top:10px}
+th,td{border:1px solid #0ea5e9;padding:10px}
+th{background:#0ea5e9;color:black}
+tr:hover{background:rgba(14,165,233,0.1)}
+</style>
+</head>
+
+<body>
+
+<div class="sidebar">
+<h2>📚 Data Perpustakaan</h2>
+<a href="inventaris.html">📦 Inventaris Buku</a><br><br>
+<button onclick="logout()">Logout</button>
+</div>
+
+<div class="main">
+
+<div class="card">
+<h3>Tambah Buku</h3>
+<input id="judul" placeholder="Judul Buku">
+
+<select id="kategori" onchange="cekKategori()">
+<option value="Pelajaran">Pelajaran</option>
+</select>
+
+<select id="kelas">
+<option value="">Pilih Kelas</option>
+<option value="10">10</option>
+<option value="11">11</option>
+<option value="12">12</option>
+</select>
+
+<button onclick="tambahBuku()">Tambah</button>
+</div>
+
+<div class="card">
+<h3>Daftar Buku</h3>
+<div class="grid">
+<div class="col"><h4>Kelas 10</h4><div id="k10"></div></div>
+<div class="col"><h4>Kelas 11</h4><div id="k11"></div></div>
+<div class="col"><h4>Kelas 12</h4><div id="k12"></div></div>
+<div class="col"><h4>Cerita</h4><div id="cerita"></div></div>
+</div>
+</div>
+
+<div class="card">
+<h3>Pinjam Buku</h3>
+
+<input id="nama" placeholder="Nama Siswa">
+
+<select id="kelasSiswa">
+<option>10A</option><option>10B</option><option>10C</option><option>10D</option>
+<option>11A</option><option>11B</option><option>11C</option><option>11D</option>
+<option>12A</option><option>12B</option><option>12C</option><option>12D</option>
+</select>
+
+<select id="modePinjam" onchange="gantiMode()">
+<option value="pelajaran">Buku Pelajaran</option>
+<option value="cerita">Buku Cerita</option>
+</select>
+
+<br>
+
+<input id="bukuDipilih" placeholder="Klik buku di atas" readonly>
+<input id="bukuManual" placeholder="Tulis judul cerita..." style="display:none;">
+
+<br>
+
+<button onclick="pinjam()">📥 Pinjam</button>
+</div>
+
+<div class="card">
+<h3>Data Peminjaman</h3>
+
+<input id="search" onkeyup="cari()" placeholder="Cari nama...">
+<button onclick="exportExcel()">Export Excel</button>
+<button onclick="exportTxt()">Export TXT</button>
+
+<p id="stats"></p>
+
+<table id="tabel"></table>
+</div>
+
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+const app = initializeApp({
+  apiKey:"AIzaSyAen0SYv98xA-LgPCPiotZan4KugXSMAKA",
+  authDomain:"perpustakaan-e9f72.firebaseapp.com",
+  projectId:"perpustakaan-e9f72"
+});
+
+const db=getFirestore(app);
+const auth=getAuth(app);
+
+onAuthStateChanged(auth,(user)=>{
+  if(!user) window.location="login.html";
+});
+window.logout=()=>signOut(auth);
+
+// TAMBAH BUKU
+window.tambahBuku=async()=>{
+  if(!judul.value) return alert("Isi judul!");
+
+  let kl = kategori.value==="Cerita" ? "-" : kelas.value;
+
+  await addDoc(collection(db,"buku"),{
+    judul:judul.value,
+    kategori:kategori.value,
+    kelas:String(kl)
+  });
+
+  loadBuku();
+};
+
+// LOAD BUKU
+async function loadBuku(){
+  k10.innerHTML=k11.innerHTML=k12.innerHTML=cerita.innerHTML="";
+  let q=await getDocs(collection(db,"buku"));
+
+  q.forEach(d=>{
+    let b=d.data();
+    let id=d.id;
+
+    let el=`<div class="item">
+    <span onclick="pilih('${b.judul}','${b.kategori}')">${b.judul}</span>
+    <button onclick="hapusBuku('${id}')">❌</button></div>`;
+
+    if(b.kategori==="Cerita") cerita.innerHTML+=el;
+    else if(b.kelas==="10") k10.innerHTML+=el;
+    else if(b.kelas==="11") k11.innerHTML+=el;
+    else if(b.kelas==="12") k12.innerHTML+=el;
+  });
+}
+
+window.pilih=(j,k)=>{
+  bukuDipilih.value=j;
+  bukuDipilih.dataset.kategori=k;
+};
+
+window.hapusBuku=async(id)=>{
+  await deleteDoc(doc(db,"buku",id));
+  loadBuku();
+};
+
+// PINJAM
+window.pinjam=async()=>{
+  let buku = modePinjam.value==="cerita"
+    ? bukuManual.value
+    : bukuDipilih.value;
+
+  if(!nama.value || !buku) return alert("Isi data dulu!");
+
+  let kategoriFix = modePinjam.value==="cerita"
+    ? "Cerita"
+    : bukuDipilih.dataset.kategori;
+
+  await addDoc(collection(db,"peminjaman"),{
+    nama:nama.value,
+    kelas:kelasSiswa.value,
+    buku,
+    kategori:kategoriFix,
+    tanggal_pinjam:new Date(),
+    status:"Dipinjam",
+    denda:0
+  });
+
+  loadData();
+};
+
+// LOAD DATA
+async function loadData(){
+tabel.innerHTML=`<tr>
+<th>Nama</th><th>Kelas</th><th>Buku</th><th>Pinjam</th><th>Kembali</th><th>Denda</th><th>Aksi</th></tr>`;
+
+let q=await getDocs(collection(db,"peminjaman"));
+
+let total=0, aktif=0;
+
+q.forEach(d=>{
+  let x=d.data();
+  total++;
+  if(x.status==="Dipinjam") aktif++;
+
+  let pinjam=new Date(x.tanggal_pinjam.seconds*1000);
+
+  let kembali = x.tanggal_kembali
+    ? new Date(x.tanggal_kembali.seconds*1000).toLocaleString()
+    : "-";
+
+  let tombol = x.status==="Dipinjam"
+    ? `<button onclick="kembalikan('${d.id}','${x.kategori}',${pinjam.getTime()})">Kembalikan</button>`
+    : "✔️";
+
+  tabel.innerHTML+=`
+  <tr>
+    <td>${x.nama}</td>
+    <td>${x.kelas}</td>
+    <td>${x.buku}</td>
+    <td>${pinjam.toLocaleString()}</td>
+    <td>${kembali}</td>
+    <td class="denda">Rp${x.denda||0}</td>
+    <td>${tombol} <button onclick="hapus('${d.id}')">🗑️</button></td>
+  </tr>`;
+});
+
+stats.innerText=`Total: ${total} | Dipinjam: ${aktif}`;
+}
+
+window.hapus=async(id)=>{
+  await deleteDoc(doc(db,"peminjaman",id));
+  loadData();
+};
+
+// KEMBALIKAN
+window.kembalikan=async(id,kategori,pinjamTime)=>{
+  let sekarang=new Date();
+  let lama=(sekarang-pinjamTime)/(1000*60*60*24);
+
+  let denda=0;
+
+  if(kategori==="Cerita" && lama>3) denda+=1000;
+  if(lama>1) denda+=1000;
+
+  await updateDoc(doc(db,"peminjaman",id),{
+    status:"Selesai",
+    tanggal_kembali:sekarang,
+    denda
+  });
+
+  alert("Denda: Rp"+denda);
+  loadData();
+};
+
+// SEARCH
+window.cari=()=>{
+  let v=search.value.toLowerCase();
+  document.querySelectorAll("#tabel tr").forEach((r,i)=>{
+    if(i===0)return;
+    r.style.display=r.innerText.toLowerCase().includes(v)?"":"none";
+  });
+};
+
+// EXPORT
+window.exportExcel=async()=>{
+  let q=await getDocs(collection(db,"peminjaman"));
+  let csv="Nama,Kelas,Buku\n";
+  q.forEach(d=>{
+    let x=d.data();
+    csv+=`${x.nama},${x.kelas},${x.buku}\n`;
+  });
+  let a=document.createElement("a");
+  a.href=URL.createObjectURL(new Blob([csv]));
+  a.download="data.csv";
+  a.click();
+};
+
+window.exportTxt=async()=>{
+  let q=await getDocs(collection(db,"peminjaman"));
+  let txt="";
+  q.forEach(d=>{
+    let x=d.data();
+    txt+=`Nama:${x.nama}\nKelas:${x.kelas}\nBuku:${x.buku}\n\n`;
+  });
+  let a=document.createElement("a");
+  a.href=URL.createObjectURL(new Blob([txt]));
+  a.download="data.txt";
+  a.click();
+};
+
+// MODE
+window.gantiMode=()=>{
+  bukuDipilih.style.display=modePinjam.value==="cerita"?"none":"inline";
+  bukuManual.style.display=modePinjam.value==="cerita"?"inline":"none";
+};
+
+window.cekKategori=()=>{
+  kelas.style.display=kategori.value==="Cerita"?"none":"inline";
+};
+
+loadBuku();
+loadData();
+</script>
+
+</body>
+</html>

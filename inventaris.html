@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Inventaris Buku</title>
+
+<style>
+body{background:#020617;color:white;font-family:sans-serif}
+
+table{
+  width:100%;
+  border-collapse:collapse;
+  margin-top:10px;
+}
+
+th,td{
+  border:1px solid #0ea5e9;
+  padding:8px;
+}
+
+th{background:#0ea5e9;color:black}
+
+button{padding:5px;background:#0ea5e9;border:none;margin:2px}
+input,select{padding:6px;margin:5px}
+
+a{color:#38bdf8}
+</style>
+</head>
+
+<body>
+
+<h2>📚 Inventaris Buku</h2>
+<a href="index.html">⬅️ Kembali</a>
+
+<h3>Tambah Buku</h3>
+
+<input id="judul" placeholder="Judul">
+<select id="kategori">
+<option>Pelajaran</option>
+<option>Novel</option>
+<option>Komik</option>
+<option>Kartun</option>
+</select>
+
+<select id="kelas">
+<option value="">-</option>
+<option value="10">10</option>
+<option value="11">11</option>
+<option value="12">12</option>
+</select>
+
+<input id="jumlah" type="number" placeholder="Jumlah">
+
+<button onclick="tambah()">Tambah</button>
+
+<h3>Semua Buku</h3>
+<table id="tabel"></table>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+const app = initializeApp({
+  apiKey:"AIzaSyAen0SYv98xA-LgPCPiotZan4KugXSMAKA",
+  authDomain:"perpustakaan-e9f72.firebaseapp.com",
+  projectId:"perpustakaan-e9f72"
+});
+
+const db=getFirestore(app);
+
+// TAMBAH
+window.tambah=async()=>{
+  await addDoc(collection(db,"inventaris"),{
+    judul:judul.value,
+    kategori:kategori.value,
+    kelas:kelas.value,
+    jumlah:Number(jumlah.value)
+  });
+  load();
+};
+
+// LOAD
+async function load(){
+  tabel.innerHTML=`<tr>
+  <th>Judul</th><th>Kategori</th><th>Kelas</th><th>Jumlah</th><th>Aksi</th></tr>`;
+
+  let q=await getDocs(collection(db,"inventaris"));
+
+  q.forEach(d=>{
+    let b=d.data();
+
+    tabel.innerHTML+=`
+    <tr>
+      <td>${b.judul}</td>
+      <td>${b.kategori}</td>
+      <td>${b.kelas||"-"}</td>
+      <td>${b.jumlah}</td>
+      <td>
+        <button onclick="edit('${d.id}','${b.judul}','${b.kategori}','${b.kelas}','${b.jumlah}')">✏️</button>
+        <button onclick="hapus('${d.id}')">❌</button>
+      </td>
+    </tr>`;
+  });
+}
+
+// HAPUS
+window.hapus=async(id)=>{
+  if(confirm("Hapus buku?")){
+    await deleteDoc(doc(db,"inventaris",id));
+    load();
+  }
+};
+
+// EDIT
+window.edit=async(id,judulL,kategoriL,kelasL,jumlahL)=>{
+  let j=prompt("Judul:",judulL);
+  if(!j) return;
+
+  let k=prompt("Kategori:",kategoriL);
+  let kl=prompt("Kelas:",kelasL);
+  let jm=prompt("Jumlah:",jumlahL);
+
+  await updateDoc(doc(db,"inventaris",id),{
+    judul:j,
+    kategori:k,
+    kelas:kl,
+    jumlah:Number(jm)
+  });
+
+  load();
+};
+
+load();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Inventaris Buku</title>
+
+<style>
+body{background:#020617;color:white;font-family:sans-serif}
+
+.grid{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:10px;
+  margin-top:20px;
+}
+
+.col{
+  border:1px solid #0ea5e9;
+  border-radius:10px;
+  padding:10px;
+}
+
+.item{
+  display:flex;
+  justify-content:space-between;
+  border-bottom:1px solid #0ea5e9;
+  padding:5px;
+}
+
+table{
+  width:100%;
+  border-collapse:collapse;
+  margin-top:20px;
+}
+
+th,td{
+  border:1px solid #0ea5e9;
+  padding:8px;
+}
+
+th{background:#0ea5e9;color:black}
+
+button{
+  padding:5px;
+  background:#0ea5e9;
+  border:none;
+  margin:2px;
+  cursor:pointer;
+}
+
+input,select{
+  padding:6px;
+  margin:5px;
+}
+
+a{color:#38bdf8}
+</style>
+</head>
+
+<body>
+
+<h2>📚 Inventaris Buku</h2>
+<a href="index.html">⬅️ Kembali</a>
+
+<h3>Tambah Buku</h3>
+
+<input id="judul" placeholder="Judul">
+
+<select id="kategori">
+<option value="Pelajaran">Pelajaran</option>
+<option value="Novel">Novel</option>
+<option value="Komik">Komik</option>
+<option value="Kartun">Kartun</option>
+<option value="Fiksi">Fiksi</option>
+<option value="NonFiksi">NonFiksi</option>
+</select>
+
+<select id="kelas">
+<option value="">Tanpa Kelas</option>
+<option value="10">10</option>
+<option value="11">11</option>
+<option value="12">12</option>
+</select>
+
+<input id="jumlah" type="number" placeholder="Jumlah">
+
+<button onclick="tambah()">Tambah</button>
+
+<!-- GRID TAMPILAN -->
+<div class="grid">
+
+<div class="col"><h4>Kelas 10</h4><div id="k10"></div></div>
+<div class="col"><h4>Kelas 11</h4><div id="k11"></div></div>
+<div class="col"><h4>Kelas 12</h4><div id="k12"></div></div>
+
+<div class="col"><h4>Novel</h4><div id="novel"></div></div>
+<div class="col"><h4>Komik</h4><div id="komik"></div></div>
+<div class="col"><h4>Kartun</h4><div id="kartun"></div></div>
+<div class="col"><h4>Fiksi</h4><div id="fiksi"></div></div>
+<div class="col"><h4>Non Fiksi</h4><div id="nonfiksi"></div></div>
+
+</div>
+
+<h3>Semua Buku (Tabel)</h3>
+<table id="tabel"></table>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+const app = initializeApp({
+  apiKey:"AIzaSyAen0SYv98xA-LgPCPiotZan4KugXSMAKA",
+  authDomain:"perpustakaan-e9f72.firebaseapp.com",
+  projectId:"perpustakaan-e9f72"
+});
+
+const db=getFirestore(app);
+
+// TAMBAH
+window.tambah=async()=>{
+  if(!judul.value || !jumlah.value) return alert("Isi dulu!");
+
+  await addDoc(collection(db,"inventaris"),{
+    judul:judul.value,
+    kategori:kategori.value,
+    kelas:kelas.value,
+    jumlah:Number(jumlah.value)
+  });
+
+  judul.value="";
+  jumlah.value="";
+  load();
+};
+
+// LOAD
+async function load(){
+
+  // reset grid
+  k10.innerHTML=k11.innerHTML=k12.innerHTML=
+  novel.innerHTML=komik.innerHTML=kartun.innerHTML=
+  fiksi.innerHTML=nonfiksi.innerHTML="";
+
+  tabel.innerHTML=`<tr>
+  <th>Judul</th><th>Kategori</th><th>Kelas</th><th>Jumlah</th><th>Aksi</th></tr>`;
+
+  let q=await getDocs(collection(db,"inventaris"));
+
+  q.forEach(d=>{
+    let b=d.data();
+    let id=d.id;
+
+    let el = `
+    <div class="item">
+      <span>${b.judul} (${b.jumlah})</span>
+      <button onclick="hapus('${id}')">❌</button>
+    </div>`;
+
+    // GRID PEMISAHAN
+    if(b.kategori==="Pelajaran"){
+      if(b.kelas==="10") k10.innerHTML+=el;
+      else if(b.kelas==="11") k11.innerHTML+=el;
+      else if(b.kelas==="12") k12.innerHTML+=el;
+    }
+    else if(b.kategori==="Novel") novel.innerHTML+=el;
+    else if(b.kategori==="Komik") komik.innerHTML+=el;
+    else if(b.kategori==="Kartun") kartun.innerHTML+=el;
+    else if(b.kategori==="Fiksi") fiksi.innerHTML+=el;
+    else if(b.kategori==="NonFiksi") nonfiksi.innerHTML+=el;
+
+    // TABEL
+    tabel.innerHTML+=`
+    <tr>
+      <td>${b.judul}</td>
+      <td>${b.kategori}</td>
+      <td>${b.kelas||"-"}</td>
+      <td>${b.jumlah}</td>
+      <td>
+        <button onclick="edit('${id}','${b.judul}','${b.kategori}','${b.kelas}','${b.jumlah}')">✏️</button>
+        <button onclick="hapus('${id}')">❌</button>
+      </td>
+    </tr>`;
+  });
+}
+
+// HAPUS
+window.hapus=async(id)=>{
+  if(confirm("Hapus buku?")){
+    await deleteDoc(doc(db,"inventaris",id));
+    load();
+  }
+};
+
+// EDIT
+window.edit=async(id,j,k,kl,jm)=>{
+  let nj=prompt("Judul:",j);
+  if(!nj) return;
+
+  let nk=prompt("Kategori:",k);
+  let nkl=prompt("Kelas:",kl);
+  let njm=prompt("Jumlah:",jm);
+
+  await updateDoc(doc(db,"inventaris",id),{
+    judul:nj,
+    kategori:nk,
+    kelas:nkl,
+    jumlah:Number(njm)
+  });
+
+  load();
+};
+
+load();
+</script>
+
+</body>
+</html>

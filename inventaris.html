@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Inventaris Buku</title>
+
+<style>
+body{
+  background:linear-gradient(135deg,#1e3a8a,#020617);
+  color:white;
+  font-family:'Segoe UI';
+  margin:0;
+  padding:20px;
+}
+
+.container{max-width:1200px;margin:auto}
+
+.card{
+  background:#020617;
+  border:1px solid #38bdf8;
+  border-radius:12px;
+  padding:15px;
+  margin-top:20px;
+  box-shadow:0 0 10px rgba(56,189,248,0.2);
+}
+
+.grid{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:12px;
+  margin-top:10px;
+}
+
+.col{
+  border:1px solid #38bdf8;
+  border-radius:10px;
+  padding:10px;
+  background:#020617;
+}
+
+.item{
+  display:flex;
+  justify-content:space-between;
+  border-bottom:1px solid #38bdf8;
+  padding:6px 0;
+  font-size:14px;
+}
+
+.badge{
+  padding:2px 6px;
+  border-radius:6px;
+  font-size:11px;
+  margin-left:5px;
+}
+
+.pelajaran{background:#22c55e}
+.novel{background:#a855f7}
+.komik{background:#f97316}
+.kartun{background:#eab308}
+.fiksi{background:#06b6d4}
+.nonfiksi{background:#ef4444}
+
+input,select{
+  padding:8px;
+  margin:5px;
+  border-radius:6px;
+  border:1px solid #38bdf8;
+  background:#020617;
+  color:white;
+}
+
+button{
+  padding:6px 10px;
+  background:#38bdf8;
+  border:none;
+  border-radius:6px;
+  margin:5px;
+  cursor:pointer;
+  color:black;
+}
+
+button:hover{background:#0ea5e9}
+
+.filterBtn{
+  background:#1e293b;
+  color:white;
+  border:1px solid #38bdf8;
+}
+
+.active{
+  background:#38bdf8 !important;
+  color:black !important;
+}
+
+table{
+  width:100%;
+  border-collapse:collapse;
+  margin-top:10px;
+}
+
+th,td{
+  border:1px solid #38bdf8;
+  padding:8px;
+}
+
+th{background:#38bdf8;color:black}
+
+tr:hover{background:rgba(56,189,248,0.1)}
+
+.stats{
+  margin-top:10px;
+  font-size:14px;
+  color:#38bdf8;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<h2>📚 Inventaris Buku</h2>
+<a href="index.html">⬅️ Kembali</a>
+
+<div class="card">
+<h3>Tambah Buku</h3>
+
+<input id="judul" placeholder="Judul">
+
+<select id="kategori">
+<option value="Pelajaran">Pelajaran</option>
+<option value="Novel">Novel</option>
+<option value="Komik">Komik</option>
+<option value="Kartun">Kartun</option>
+<option value="Fiksi">Fiksi</option>
+<option value="NonFiksi">NonFiksi</option>
+</select>
+
+<select id="kelas">
+<option value="">Tanpa Kelas</option>
+<option value="10">10</option>
+<option value="11">11</option>
+<option value="12">12</option>
+</select>
+
+<input id="jumlah" type="number" placeholder="Jumlah">
+
+<button onclick="tambah()">Tambah</button>
+</div>
+
+<div class="card">
+<h3>Filter Kategori</h3>
+
+<button class="filterBtn active" onclick="setFilter('')">Semua</button>
+<button class="filterBtn" onclick="setFilter('Pelajaran')">Pelajaran</button>
+<button class="filterBtn" onclick="setFilter('Novel')">Novel</button>
+<button class="filterBtn" onclick="setFilter('Komik')">Komik</button>
+<button class="filterBtn" onclick="setFilter('Kartun')">Kartun</button>
+<button class="filterBtn" onclick="setFilter('Fiksi')">Fiksi</button>
+<button class="filterBtn" onclick="setFilter('NonFiksi')">Non Fiksi</button>
+
+</div>
+
+<div class="card">
+<h3>Statistik</h3>
+<div id="stats" class="stats"></div>
+</div>
+
+<div class="card">
+<h3>Grid Inventaris</h3>
+
+<div class="grid">
+
+<div class="col"><h4>Kelas 10</h4><div id="k10"></div></div>
+<div class="col"><h4>Kelas 11</h4><div id="k11"></div></div>
+<div class="col"><h4>Kelas 12</h4><div id="k12"></div></div>
+
+<div class="col"><h4>Novel</h4><div id="novel"></div></div>
+<div class="col"><h4>Komik</h4><div id="komik"></div></div>
+<div class="col"><h4>Kartun</h4><div id="kartun"></div></div>
+<div class="col"><h4>Fiksi</h4><div id="fiksi"></div></div>
+<div class="col"><h4>Non Fiksi</h4><div id="nonfiksi"></div></div>
+
+</div>
+</div>
+
+<div class="card">
+<h3>Semua Buku</h3>
+
+<input id="search" onkeyup="load()" placeholder="🔍 Cari...">
+
+<table id="tabel"></table>
+</div>
+
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+const app = initializeApp({
+  apiKey:"AIzaSyAen0SYv98xA-LgPCPiotZan4KugXSMAKA",
+  authDomain:"perpustakaan-e9f72.firebaseapp.com",
+  projectId:"perpustakaan-e9f72"
+});
+
+const db=getFirestore(app);
+
+let currentFilter="";
+
+window.setFilter=(kat)=>{
+  currentFilter=kat;
+  document.querySelectorAll(".filterBtn").forEach(b=>b.classList.remove("active"));
+  event.target.classList.add("active");
+  load();
+};
+
+function getBadge(k){
+  let cls=k.toLowerCase();
+  return `<span class="badge ${cls}">${k}</span>`;
+}
+
+// TAMBAH
+window.tambah=async()=>{
+  if(!judul.value || !jumlah.value) return alert("Isi dulu!");
+
+  await addDoc(collection(db,"inventaris"),{
+    judul:judul.value,
+    kategori:kategori.value,
+    kelas:kelas.value,
+    jumlah:Number(jumlah.value)
+  });
+
+  judul.value="";
+  jumlah.value="";
+  load();
+};
+
+// LOAD
+async function load(){
+
+  let searchVal=search.value.toLowerCase();
+
+  k10.innerHTML=k11.innerHTML=k12.innerHTML=
+  novel.innerHTML=komik.innerHTML=kartun.innerHTML=
+  fiksi.innerHTML=nonfiksi.innerHTML="";
+
+  tabel.innerHTML=`<tr>
+  <th>Judul</th><th>Kategori</th><th>Kelas</th><th>Jumlah</th><th>Aksi</th></tr>`;
+
+  let q=await getDocs(collection(db,"inventaris"));
+
+  let statsData={Pelajaran:0,Novel:0,Komik:0,Kartun:0,Fiksi:0,NonFiksi:0};
+
+  q.forEach(d=>{
+    let b=d.data();
+    let id=d.id;
+
+    if(currentFilter && b.kategori!==currentFilter) return;
+    if(searchVal && !(`${b.judul} ${b.kategori}`.toLowerCase().includes(searchVal))) return;
+
+    statsData[b.kategori]+=b.jumlah;
+
+    let el = `
+    <div class="item">
+      <span>${b.judul} (${b.jumlah}) ${getBadge(b.kategori)}</span>
+      <button onclick="hapus('${id}')">❌</button>
+    </div>`;
+
+    if(b.kategori==="Pelajaran"){
+      if(b.kelas==="10") k10.innerHTML+=el;
+      else if(b.kelas==="11") k11.innerHTML+=el;
+      else if(b.kelas==="12") k12.innerHTML+=el;
+    }
+    else if(b.kategori==="Novel") novel.innerHTML+=el;
+    else if(b.kategori==="Komik") komik.innerHTML+=el;
+    else if(b.kategori==="Kartun") kartun.innerHTML+=el;
+    else if(b.kategori==="Fiksi") fiksi.innerHTML+=el;
+    else if(b.kategori==="NonFiksi") nonfiksi.innerHTML+=el;
+
+    tabel.innerHTML+=`
+    <tr>
+      <td>${b.judul}</td>
+      <td>${getBadge(b.kategori)}</td>
+      <td>${b.kelas||"-"}</td>
+      <td>${b.jumlah}</td>
+      <td>
+        <button onclick="edit('${id}','${b.judul}','${b.kategori}','${b.kelas}','${b.jumlah}')">✏️</button>
+        <button onclick="hapus('${id}')">❌</button>
+      </td>
+    </tr>`;
+  });
+
+  stats.innerHTML = `
+  Pelajaran: ${statsData.Pelajaran} |
+  Novel: ${statsData.Novel} |
+  Komik: ${statsData.Komik} |
+  Kartun: ${statsData.Kartun} |
+  Fiksi: ${statsData.Fiksi} |
+  NonFiksi: ${statsData.NonFiksi}`;
+}
+
+// HAPUS
+window.hapus=async(id)=>{
+  if(confirm("Hapus buku?")){
+    await deleteDoc(doc(db,"inventaris",id));
+    load();
+  }
+};
+
+// EDIT
+window.edit=async(id,j,k,kl,jm)=>{
+  let nj=prompt("Judul:",j);
+  if(!nj) return;
+
+  let nk=prompt("Kategori:",k);
+  let nkl=prompt("Kelas:",kl);
+  let njm=prompt("Jumlah:",jm);
+
+  await updateDoc(doc(db,"inventaris",id),{
+    judul:nj,
+    kategori:nk,
+    kelas:nkl,
+    jumlah:Number(njm)
+  });
+
+  load();
+};
+
+load();
+</script>
+
+</body>
+</html>

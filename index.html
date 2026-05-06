@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Perpustakaan Pro</title>
+
+<style>
+body{
+  margin:0;
+  font-family:'Segoe UI';
+  background:linear-gradient(135deg,#1e3a8a,#0f172a);
+  color:white;
+}
+
+.sidebar{
+  width:220px;
+  height:100vh;
+  background:#1e293b;
+  position:fixed;
+  padding:20px;
+  border-right:2px solid #38bdf8;
+}
+
+.main{margin-left:240px;padding:20px}
+
+.card{
+  background:#0f172a;
+  border:1px solid #38bdf8;
+  border-radius:12px;
+  padding:15px;
+  margin-bottom:20px;
+  box-shadow:0 0 10px rgba(56,189,248,0.3);
+}
+
+.dateCard{
+  margin-top:20px;
+  border:1px solid #38bdf8;
+  border-radius:10px;
+  overflow:hidden;
+}
+
+.dateTitle{
+  padding:10px;
+  background:#38bdf8;
+  color:black;
+  font-weight:bold;
+}
+
+input,select{
+  padding:8px;
+  margin:5px;
+  border-radius:6px;
+  border:1px solid #38bdf8;
+  background:#020617;
+  color:white;
+}
+
+button{
+  padding:6px 10px;
+  background:#38bdf8;
+  border:none;
+  border-radius:6px;
+  margin:5px;
+  cursor:pointer;
+  color:black;
+}
+
+button:hover{background:#0ea5e9}
+
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+
+.col{
+  border:1px solid #38bdf8;
+  padding:10px;
+  border-radius:10px;
+  background:#020617;
+}
+
+.item{
+  display:flex;
+  justify-content:space-between;
+  border-bottom:1px solid #38bdf8;
+  padding:5px;
+}
+
+table{
+  width:100%;
+  border-collapse:collapse;
+}
+
+th,td{
+  border:1px solid #38bdf8;
+  padding:8px;
+}
+
+th{
+  background:#38bdf8;
+  color:black;
+}
+
+tr:hover{background:rgba(56,189,248,0.1)}
+
+.denda{color:#f87171}
+</style>
+</head>
+
+<body>
+
+<div class="sidebar">
+<h2>📚 Perpustakaan</h2>
+<a href="inventaris.html">📦 Inventaris</a><br><br>
+<button onclick="logout()">Logout</button>
+<button onclick="hapusSemua()">🗑️ Reset Data</button>
+</div>
+
+<div class="main">
+
+<div class="card">
+<h3>Tambah Buku</h3>
+<input id="judul" placeholder="Judul Buku">
+<select id="kelas">
+<option value="10">10</option>
+<option value="11">11</option>
+<option value="12">12</option>
+</select>
+<button onclick="tambahBuku()">Tambah</button>
+</div>
+
+<div class="card">
+<h3>Daftar Buku</h3>
+<div class="grid">
+<div class="col"><h4>Kelas 10</h4><div id="k10"></div></div>
+<div class="col"><h4>Kelas 11</h4><div id="k11"></div></div>
+<div class="col"><h4>Kelas 12</h4><div id="k12"></div></div>
+</div>
+</div>
+
+<div class="card">
+<h3>Pinjam Buku</h3>
+
+<input id="nama" placeholder="Nama">
+<select id="kelasSiswa">
+<option>10A</option><option>10B</option><option>10C</option><option>10D</option>
+<option>11A</option><option>11B</option><option>11C</option><option>11D</option>
+<option>12A</option><option>12B</option><option>12C</option><option>12D</option>
+</select>
+
+<input id="bukuDipilih" placeholder="Klik buku di atas" readonly>
+<input id="jumlah" type="number" value="1">
+
+<button onclick="pinjam()">📥 Pinjam</button>
+</div>
+
+<div class="card">
+<h3>Data Peminjaman</h3>
+
+<input type="date" id="filterTanggal">
+<button onclick="loadData()">Filter</button>
+
+<input id="search" onkeyup="cari()" placeholder="Cari...">
+
+<p id="stats"></p>
+
+<div id="tabel"></div>
+
+</div>
+
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+const app = initializeApp({
+  apiKey: "AIzaSyAen0SYv98xA-LgPCPiotZan4KugXSMAKA",
+  authDomain: "perpustakaan-e9f72.firebaseapp.com",
+  projectId: "perpustakaan-e9f72",
+});
+
+const db=getFirestore(app);
+const auth=getAuth(app);
+
+onAuthStateChanged(auth,(u)=>{
+  if(!u) location="login.html";
+});
+window.logout=()=>signOut(auth);
+
+// TAMBAH BUKU
+window.tambahBuku=async()=>{
+  await addDoc(collection(db,"buku"),{
+    judul:judul.value,
+    kelas:kelas.value
+  });
+  loadBuku();
+};
+
+async function loadBuku(){
+  k10.innerHTML=k11.innerHTML=k12.innerHTML="";
+  let q=await getDocs(collection(db,"buku"));
+
+  q.forEach(d=>{
+    let b=d.data();
+    let el=`<div class="item">
+    <span onclick="pilih('${b.judul}')">${b.judul}</span>
+    </div>`;
+
+    if(b.kelas=="10") k10.innerHTML+=el;
+    if(b.kelas=="11") k11.innerHTML+=el;
+    if(b.kelas=="12") k12.innerHTML+=el;
+  });
+}
+
+window.pilih=(j)=>bukuDipilih.value=j;
+
+// PINJAM
+window.pinjam=async()=>{
+  if(!nama.value||!bukuDipilih.value) return alert("Isi dulu!");
+
+  await addDoc(collection(db,"peminjaman"),{
+    nama:nama.value,
+    kelas:kelasSiswa.value,
+    buku:bukuDipilih.value,
+    jumlah:Number(jumlah.value),
+    tanggal_pinjam:new Date(),
+    status:"Dipinjam",
+    denda:0
+  });
+
+  nama.value="";
+  bukuDipilih.value="";
+  jumlah.value=1;
+
+  loadData();
+};
+
+// LOAD DATA RAPI
+async function loadData(){
+
+  let q=await getDocs(collection(db,"peminjaman"));
+  let data={};
+  let filter=filterTanggal.value;
+
+  q.forEach(d=>{
+    let x=d.data();
+    let tgl=new Date(x.tanggal_pinjam.seconds*1000);
+    let key=tgl.toISOString().split("T")[0];
+
+    if(filter && key!==filter) return;
+
+    if(!data[key]) data[key]=[];
+    data[key].push({id:d.id,...x});
+  });
+
+  let keys=Object.keys(data).sort((a,b)=>new Date(b)-new Date(a));
+
+  tabel.innerHTML="";
+  let total=0,aktif=0;
+
+  keys.forEach(k=>{
+    let html=`<div class="dateCard">
+      <div class="dateTitle">📅 ${new Date(k).toLocaleDateString()}</div>
+      <table>
+      <tr>
+      <th>Nama</th><th>Kelas</th><th>Buku</th>
+      <th>Jumlah</th><th>Pinjam</th><th>Kembali</th>
+      <th>Denda</th><th>Aksi</th></tr>`;
+
+    data[k].forEach(x=>{
+      total++;
+      if(x.status==="Dipinjam") aktif++;
+
+      let pinjam=new Date(x.tanggal_pinjam.seconds*1000);
+      let kembali=x.tanggal_kembali
+      ? new Date(x.tanggal_kembali.seconds*1000).toLocaleString()
+      : "-";
+
+      let btn=x.status==="Dipinjam"
+      ? `<button onclick="kembalikan('${x.id}',${pinjam.getTime()})">Kembalikan</button>`
+      : "✔️";
+
+      html+=`
+      <tr>
+      <td>${x.nama}</td>
+      <td>${x.kelas}</td>
+      <td>${x.buku}</td>
+      <td>${x.jumlah}</td>
+      <td>${pinjam.toLocaleString()}</td>
+      <td>${kembali}</td>
+      <td class="denda">Rp${x.denda}</td>
+      <td>${btn} <button onclick="hapus('${x.id}')">🗑️</button></td>
+      </tr>`;
+    });
+
+    html+=`</table></div>`;
+    tabel.innerHTML+=html;
+  });
+
+  stats.innerText=`Total: ${total} | Dipinjam: ${aktif}`;
+}
+
+// FUNCTION LAIN
+window.kembalikan=async(id,pinjamTime)=>{
+  let lama=(new Date()-pinjamTime)/(1000*60*60*24);
+  let denda=lama>1?1000:0;
+
+  await updateDoc(doc(db,"peminjaman",id),{
+    status:"Selesai",
+    tanggal_kembali:new Date(),
+    denda
+  });
+
+  loadData();
+};
+
+window.hapus=async(id)=>{
+  await deleteDoc(doc(db,"peminjaman",id));
+  loadData();
+};
+
+window.hapusSemua=async()=>{
+  let q=await getDocs(collection(db,"peminjaman"));
+  q.forEach(d=>deleteDoc(doc(db,"peminjaman",d.id)));
+  loadData();
+};
+
+loadBuku();
+loadData();
+</script>
+
+</body>
+</html>
